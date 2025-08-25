@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
 from utils import UM_TO_CM, UJ_TO_J
+from datetime import datetime
 
 def render():
     st.header("Microvia Process Simulator")
@@ -23,8 +24,6 @@ def render():
         st.info("Adjust the sliders for quick exploration or type exact values for precision.")
         
         st.subheader(" Laser Parameters")
-        beam_profile = st.selectbox("Beam Profile", ["Gaussian", "Top-Hat"], help="Select the energy distribution of the laser beam.")
-
         c1, c2 = st.columns([3, 1])
         with c1:
             pe_slider = st.slider("Pulse Energy (µJ)", 0.1, 50.0, params.get("pulse_energy", 10.0), 0.1)
@@ -59,9 +58,8 @@ def render():
         
         material_thickness = st.number_input("Material Thickness (µm)", 1.0, 200.0, params.get("material_thickness", 50.0), key="mt_num_sim")
 
-    else: # Recipe Goal Seeker (simplified to Gaussian-only for clarity)
+    else: # Recipe Goal Seeker
         st.info("Define your desired via and calculate a starting recipe for a GAUSSIAN beam.")
-        beam_profile = "Gaussian"
         col1, col2, col3 = st.columns(3)
         with col1:
             st.subheader("🎯 Desired Via")
@@ -102,26 +100,19 @@ def render():
     # --- SHARED CALCULATION & VISUALIZATION LOGIC ---
     w0_um = beam_diameter_um / 2
     pulse_energy_j = pulse_energy_uJ * UJ_TO_J
-    r_um = np.linspace(-beam_diameter_um * 1.5, beam_diameter_um * 1.5, 501)
+    peak_fluence_j_cm2 = (2 * pulse_energy_j) / (np.pi * (w0_um * UM_TO_CM)**2) if w0_um > 0 else 0
     
-    if beam_profile == 'Gaussian':
-        peak_fluence_j_cm2 = (2 * pulse_energy_j) / (np.pi * (w0_um * UM_TO_CM)**2) if w0_um > 0 else 0
-        fluence_profile = peak_fluence_j_cm2 * np.exp(-2 * (r_um**2) / w0_um**2)
-    else: # Top-Hat
-        peak_fluence_j_cm2 = pulse_energy_j / (np.pi * (w0_um * UM_TO_CM)**2) if w0_um > 0 else 0
-        fluence_profile = np.where(np.abs(r_um) <= w0_um, peak_fluence_j_cm2, 0)
-
+    r_um = np.linspace(-beam_diameter_um * 1.5, beam_diameter_um * 1.5, 501)
+    fluence_profile = peak_fluence_j_cm2 * np.exp(-2 * (r_um**2) / w0_um**2)
+    
     depth_profile_um = np.zeros_like(fluence_profile)
     ablation_mask = fluence_profile > ablation_threshold_j_cm2
     
     if np.any(ablation_mask):
         fluence_ratio = fluence_profile[ablation_mask] / ablation_threshold_j_cm2
         depth_profile_um[ablation_mask] = alpha_inv * np.log(fluence_ratio)
-        if beam_profile == 'Gaussian':
-            log_term = np.log(peak_fluence_j_cm2 / ablation_threshold_j_cm2)
-            top_diameter_um = np.sqrt(2 * w0_um**2 * log_term) if log_term > 0 else 0
-        else: # Top-Hat
-            top_diameter_um = beam_diameter_um if peak_fluence_j_cm2 > ablation_threshold_j_cm2 else 0
+        log_term = np.log(peak_fluence_j_cm2 / ablation_threshold_j_cm2)
+        top_diameter_um = np.sqrt(2 * w0_um**2 * log_term) if log_term > 0 else 0
     else: 
         top_diameter_um = 0
     
@@ -162,8 +153,8 @@ def render():
     # --- PLOTTING ---
     st.markdown("---")
     plot1, plot2 = st.columns(2)
+
     with plot1:
-        # This plot code remains the same and works for both beam profiles
         fig_fluence = go.Figure()
         fig_fluence.add_trace(go.Scatter(x=r_um, y=fluence_profile, mode='lines', line=dict(color='#ef4444', width=3)))
         fig_fluence.add_trace(go.Scatter(x=r_um, y=np.full_like(r_um, ablation_threshold_j_cm2), mode='lines', line=dict(color='grey', dash='dash')))
@@ -176,36 +167,35 @@ def render():
         st.plotly_chart(fig_fluence, use_container_width=True)
 
     with plot2:
-        # This plot code also remains the same
         fig_via = go.Figure()
         material_poly_x = np.concatenate([r_um, r_um[::-1]])
         material_poly_y = np.concatenate([-np.full_like(r_um, material_thickness), -final_via_profile[::-1]])
         fig_via.add_trace(go.Scatter(x=material_poly_x, y=material_poly_y, fill='toself', mode='lines', line_color='#3498db', fillcolor='rgba(220, 220, 220, 0.7)', name='Material'))
         fig_via.add_trace(go.Scatter(x=r_um, y=-final_via_profile, mode='lines', line=dict(color='#3498db', width=3)))
+        
         status_text = "SUCCESS" if bottom_diameter_um > 0 else "INCOMPLETE"
         status_color = "green" if bottom_diameter_um > 0 else "red"
         fig_via.add_annotation(x=0, y=-material_thickness/2, text=status_text, showarrow=False, font=dict(color=status_color, size=16), bgcolor="rgba(255,255,255,0.7)")
+
         fig_via.add_shape(type="line", x0=-top_diameter_um/2, y0=material_thickness*0.1, x1=top_diameter_um/2, y1=material_thickness*0.1, line=dict(color="black", width=1))
         fig_via.add_annotation(x=0, y=material_thickness*0.15, text=f"Top: {top_diameter_um:.2f} µm", showarrow=False, yanchor="bottom", font=dict(size=10))
         if bottom_diameter_um > 0:
             fig_via.add_shape(type="line", x0=-bottom_diameter_um/2, y0=-material_thickness*1.1, x1=bottom_diameter_um/2, y1=-material_thickness*1.1, line=dict(color="black", width=1))
             fig_via.add_annotation(x=0, y=-material_thickness*1.15, text=f"Bottom: {bottom_diameter_um:.2f} µm", showarrow=False, yanchor="top", font=dict(size=10))
+        
         fig_via.update_layout(title="<b>Effect:</b> Predicted Microvia Cross-Section", xaxis_title="Radial Position (µm)", yaxis_title="Depth (µm)", yaxis_range=[-material_thickness * 1.5, material_thickness * 0.5], showlegend=False, margin=dict(t=50))
         st.plotly_chart(fig_via, use_container_width=True)
 
+
+    # --- FINAL: 3D Visualization and Science Section ---
     with st.expander("Show Interactive 3D Via Visualization"):
         if max_depth_per_pulse > 0:
-            # 3D plot logic now also handles both beam profiles
             x_3d = np.linspace(r_um.min(), r_um.max(), 100)
             y_3d = np.linspace(r_um.min(), r_um.max(), 100)
             X, Y = np.meshgrid(x_3d, y_3d)
             R_sq = X**2 + Y**2
             
-            if beam_profile == 'Gaussian':
-                fluence_3d = peak_fluence_j_cm2 * np.exp(-2 * R_sq / w0_um**2)
-            else: # Top-Hat
-                fluence_3d = np.where(R_sq <= w0_um**2, peak_fluence_j_cm2, 0)
-
+            fluence_3d = peak_fluence_j_cm2 * np.exp(-2 * R_sq / w0_um**2)
             depth_3d = np.zeros_like(fluence_3d)
             ablation_mask_3d = fluence_3d > ablation_threshold_j_cm2
             
@@ -222,3 +212,30 @@ def render():
             st.plotly_chart(fig3d, use_container_width=True)
         else:
             st.warning("No ablation occurs with the current settings. Cannot render 3D view.")
+
+    st.markdown("---")
+    with st.expander("🔬 The Science & Formulas Behind the Simulation", expanded=False):
+        st.subheader("Core Principles")
+        st.markdown("""
+        This simulator models how multiple Gaussian laser pulses drill a microvia based on established physical models.
+        1.  **Single-Pulse Crater:** The shape of the hole from one pulse is first calculated using a logarithmic model based on the beam's fluence profile and the material's properties.
+        2.  **Linear Accumulation:** The total depth is estimated by multiplying the single-pulse crater depth by the number of shots.
+        3.  **Via Formation:** The final via shape is the result of this accumulated depth being "clipped" by the material's thickness.
+        """)
+
+        st.subheader("Key Parameter Formulas")
+        st.markdown(r"**1. Peak Fluence ($F_0$)**")
+        st.markdown(r"$$ F_0 = \frac{2E}{\pi w_0^2} $$")
+        st.markdown(r"- **E**: Pulse Energy (Joules), **$w_0$**: Beam Radius (cm)")
+
+        st.markdown(r"**2. Top Diameter ($D_{top}$)**")
+        st.markdown(r"$$ D_{top}^2 = 2w_0^2 \ln\left(\frac{F_0}{F_{th}}\right) $$")
+        st.markdown(r"- **$F_{th}$**: Ablation Threshold (J/cm²)")
+
+        st.markdown(r"**3. Depth per Pulse ($Z_{max}$)**")
+        st.markdown(r"$$ Z_{max} = \alpha^{-1} \ln\left(\frac{F_0}{F_{th}}\right) $$")
+        st.markdown(r"- **$\alpha^{-1}$**: Effective Penetration Depth (µm)")
+
+        st.markdown(r"**4. Wall Angle (Taper) ($\theta$)**")
+        st.markdown(r"$$ \theta = \arctan\left(\frac{D_{top} - D_{bottom}}{2H}\right) $$")
+        st.markdown(r"- **H**: Material Thickness (µm)")
