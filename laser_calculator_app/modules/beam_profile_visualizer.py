@@ -137,7 +137,7 @@ def render_interactive_simulator_inputs():
         if key not in st.session_state:
             st.session_state[key] = float(params.get(key, default))
     if "number_of_shots" not in st.session_state:
-        st.session_state.number_of_shots = int(params.get("number_of_shots", 75))
+        st.session_state.number_of_shots = int(params.get("number_of_shots", 25))
 
     with st.container(border=True):
         st.markdown("<h5>Laser Parameters</h5>", unsafe_allow_html=True)
