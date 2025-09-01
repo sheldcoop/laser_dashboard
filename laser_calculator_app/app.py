@@ -1,11 +1,12 @@
 import streamlit as st
 
-# Import all modules
+# Step 1: Import all modules, including the new dose_target_seeker
 from modules import (
     home, process_recommender, material_analyzer, liu_plot_analyzer, 
     thermal_effects_calculator, beam_profile_visualizer, mask_finder, 
-    pulse_energy_calculator, fluence_calculator, 
-    documentation  # <-- 1. Import the new documentation module
+    pulse_energy_calculator, fluence_calculator, report_generator,
+    dose_target_seeker, # <-- NEW
+    documentation
 )
 
 # --- PAGE CONFIGURATION ---
@@ -21,10 +22,8 @@ st.markdown("""
 <style>
     /* Main App Styling */
     .main .block-container { padding-top: 2rem; padding-bottom: 2rem; }
-
     /* Sidebar Styling */
     [data-testid="stSidebar"] { padding-top: 1.5rem; }
-    
     /* Home Button Styling */
     [data-testid="stSidebar"] .stButton button[data-testid="stButton-Home"] {
         font-size: 1.5rem;
@@ -42,7 +41,6 @@ st.markdown("""
     [data-testid="stSidebar"] .stButton button[data-testid="stButton-Home"]:focus {
         box-shadow: none;
     }
-
     /* Sidebar Buttons (for tools) */
     [data-testid="stSidebar"] .stButton button {
         text-align: left !important;
@@ -50,7 +48,6 @@ st.markdown("""
         padding: 10px 15px;
         border-radius: 8px;
     }
-
     /* Sidebar Expanders */
     [data-testid="stSidebar"] .stExpander {
         border: none !important; box-shadow: none !important;
@@ -58,7 +55,6 @@ st.markdown("""
     [data-testid="stSidebar"] .stExpander summary {
         padding: 10px 15px; border-radius: 8px; font-weight: 500; font-size: 1rem;
     }
-
     /* Hide Streamlit Branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
@@ -71,21 +67,23 @@ if 'app_mode' not in st.session_state:
     st.session_state.app_mode = "Home"
 
 # --- HIERARCHICAL MODULE DICTIONARY ---
-# This dictionary is also correct and does not need to be changed.
+# Step 2: Add the new modules to their logical groups
 TOOL_CATEGORIES = {
     "Core Workflow": {
         "Material Analyzer": material_analyzer,
         "Process Recommender": process_recommender,
         "Microvia Process Simulator": beam_profile_visualizer,
+        "Report Generator": report_generator, # <-- ADDED
     },
     "Advanced Analysis": {
         "Liu Plot Analyzer": liu_plot_analyzer,
         "Thermal Effects Calculator": thermal_effects_calculator,
     },
     "Fundamental Calculators": {
-        "Mask Finder": mask_finder,
-        "Pulse Energy": pulse_energy_calculator,
+        "Dose Target Seeker": dose_target_seeker, # <-- NEW
         "Fluence (Energy Density)": fluence_calculator,
+        "Pulse Energy": pulse_energy_calculator,
+        "Mask Finder": mask_finder,
     }
 }
 
@@ -107,7 +105,7 @@ with st.sidebar:
                     st.session_state.app_mode = tool_name
                     st.rerun()
     
-    # <-- 2. Add the dedicated button for the documentation below the tool expanders
+    # Dedicated button for the documentation below the tool expanders
     st.markdown("---")
     doc_btn_type = "primary" if st.session_state.app_mode == "Scientific Reference" else "secondary"
     if st.button("🔬 Scientific Reference", use_container_width=True, type=doc_btn_type):
@@ -120,7 +118,7 @@ selected_module = None
 
 if st.session_state.app_mode == "Home":
     selected_module = home
-# <-- 3. Add logic to handle the new "Scientific Reference" mode
+# Logic to handle the "Scientific Reference" mode
 elif st.session_state.app_mode == "Scientific Reference":
     selected_module = documentation
 else:
