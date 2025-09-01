@@ -3,11 +3,12 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from utils import UM_TO_CM, UJ_TO_J
-from .download_utils import create_download_hub # <-- THE FIX IS HERE
 
 def render():
     st.header("Dose Target Recipe Explorer")
     st.markdown("---")
+    
+    # --- THIS IS THE CORRECTED LINE ---
     st.info("Explore all combinations of Power and Shots required to achieve a specific Cumulative Dose.", icon="ℹ️")
 
     with st.container(border=True):
@@ -36,7 +37,9 @@ def render():
 
             # --- CORE CALCULATIONS ---
             area_cm2 = np.pi * ((beam_diameter_um / 2.0) * UM_TO_CM)**2
+            
             shots_range = np.arange(min_shots, max_shots + 1)
+            
             required_peak_fluence = target_dose / shots_range
             required_pulse_energy_J = (required_peak_fluence * area_cm2) / 2.0
             required_avg_power_W = required_pulse_energy_J * (rep_rate_khz * 1000)
@@ -54,7 +57,11 @@ def render():
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=df["Number of Shots"], y=df["Required Avg. Power (mW)"], mode='lines', name='Required Power'))
             fig.add_hline(y=max_power_mW, line_dash="dash", line_color="red", annotation_text="Your Max Power", annotation_position="bottom right")
-            fig.update_layout(title="Power vs. Shots Trade-Off", xaxis_title="Number of Shots", yaxis_title="Required Average Power (mW)")
+            fig.update_layout(
+                title="Power vs. Shots Trade-Off",
+                xaxis_title="Number of Shots",
+                yaxis_title="Required Average Power (mW)",
+            )
             
             st.session_state.dose_explorer_results = {"figure": fig, "dataframe": df}
 
@@ -68,6 +75,7 @@ def render():
         
         st.markdown("---")
         st.markdown(f'<p class="results-header">Recipe Exploration Canvas</p>', unsafe_allow_html=True)
+        
         st.plotly_chart(fig, use_container_width=True)
 
         st.markdown(f'<p class="results-header">Possible Recipes Table</p>', unsafe_allow_html=True)
@@ -87,5 +95,3 @@ def render():
             use_container_width=True,
             hide_index=True
         )
-        
-        create_download_hub(df, "dose_recipes")
