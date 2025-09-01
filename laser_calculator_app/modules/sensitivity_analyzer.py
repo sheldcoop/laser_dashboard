@@ -4,13 +4,14 @@ import plotly.graph_objects as go
 from utils import UM_TO_CM, UJ_TO_J
 
 # ======================================================================================
-# --- CALCULATION ENGINE (UNCHANGED) ---
+# --- CALCULATION ENGINE (REMAINS UNCHANGED) ---
 # ======================================================================================
 @st.cache_data
 def calculate_tradeoffs(fixed_params):
     p = dict(fixed_params)
     spot_diameters = np.linspace(p['min_spot'], p['max_spot'], 200)
-    w0s_um = spot_diameters / 2.0; w0s_cm = w0s_um * UM_TO_CM
+    w0s_um = spot_diameters / 2.0
+    w0s_cm = w0s_um * UM_TO_CM
     d_top_cm = p['target_diameter_um'] * UM_TO_CM
     
     required_peak_fluence = p['ablation_threshold'] * np.exp((d_top_cm**2) / (2 * w0s_cm**2))
@@ -33,22 +34,44 @@ def calculate_tradeoffs(fixed_params):
     }
 
 # ======================================================================================
-# --- GAUGE VISUALIZATION HELPER (UNCHANGED) ---
+# --- GAUGE VISUALIZATION HELPER (WITH CORRECTED COLORS AND LOGIC) ---
 # ======================================================================================
 def create_angular_gauge(value, title, unit, quality_ranges, higher_is_better=True):
-    # (This function is already correct from our last change)
+    """Creates a professional Plotly angular gauge with corrected, intuitive colors."""
+    
+    # Define ranges for Red, Yellow, Green based on whether higher or lower is better
     if higher_is_better:
-        green_range, yellow_range, red_range = [quality_ranges['average'], quality_ranges['max']], [quality_ranges['poor'], quality_ranges['average']], [0, quality_ranges['poor']]
+        # Green is high (e.g., Stability)
+        green_range = [quality_ranges['average'], quality_ranges['max']]
+        yellow_range = [quality_ranges['poor'], quality_ranges['average']]
+        red_range = [0, quality_ranges['poor']]
     else:
-        green_range, yellow_range, red_range = [0, quality_ranges['good']], [quality_ranges['good'], quality_ranges['average']], [quality_ranges['average'], quality_ranges['max']]
+        # Green is low (e.g., Taper, Energy)
+        green_range = [0, quality_ranges['good']]
+        yellow_range = [quality_ranges['good'], quality_ranges['average']]
+        red_range = [quality_ranges['average'], quality_ranges['max']]
+
     fig = go.Figure(go.Indicator(
-        mode="gauge+number", value=value,
-        domain={'x': [0, 1], 'y': [0, 1]},
-        title={'text': f"<b>{title}</b><br><span style='font-size:0.9em;color:gray'>{unit}</span>", 'font': {"size": 16}},
-        gauge={'axis': {'range': [0, quality_ranges['max']]},
-               'bar': {'color': "#34495e", 'thickness': 0.3},
-               'steps': [{'range': green_range, 'color': '#2ecc71'}, {'range': yellow_range, 'color': '#f1c40f'}, {'range': red_range, 'color': '#e74c3c'}],
-               'threshold': {'line': {'color': "black", 'width': 4}, 'thickness': 0.85, 'value': value}}))
+        mode = "gauge+number",
+        value = value,
+        domain = {'x': [0, 1], 'y': [0, 1]},
+        title = {'text': f"<b>{title}</b><br><span style='font-size:0.9em;color:gray'>{unit}</span>", 'font': {"size": 16}},
+        gauge = {
+            'axis': {'range': [0, quality_ranges['max']], 'tickwidth': 1, 'tickcolor': "darkblue"},
+            'bar': {'color': "#34495e", 'thickness': 0.3},
+            'bgcolor': "white",
+            'borderwidth': 2,
+            'bordercolor': "#ecf0f1",
+            'steps': [
+                {'range': green_range, 'color': '#2ecc71'},
+                {'range': yellow_range, 'color': '#f1c40f'},
+                {'range': red_range, 'color': '#e74c3c'}
+            ],
+            'threshold': {
+                'line': {'color': "black", 'width': 4},
+                'thickness': 0.85,
+                'value': value}
+        }))
     fig.update_layout(height=250, margin=dict(l=30, r=30, t=50, b=30))
     return fig
 
@@ -75,7 +98,6 @@ def render():
         with st.container(border=True):
             min_spot = target_diameter_um * 0.8
             max_spot = target_diameter_um * 2.0
-            # A more sensible default value
             default_spot = target_diameter_um * 1.2 
             selected_spot = st.slider("Select a Beam Spot Diameter to analyze (µm)", min_value=min_spot, max_value=max_spot, value=default_spot)
 
@@ -91,10 +113,10 @@ def render():
 
         st.subheader("The Engineer's Scorecard")
         
-        # Using your specified ranges
-        energy_ranges = {'poor': 10, 'average': 5, 'good': 0, 'max': 20}
-        taper_ranges = {'poor': 13, 'average': 8, 'good': 0, 'max': 20}
-        window_ranges = {'poor': target_diameter_um * 0.3, 'average': target_diameter_um * 0.6, 'good': 0, 'max': target_diameter_um}
+        # --- IMPLEMENTING YOUR EXACT RANGES ---
+        energy_ranges = {'good': 5, 'average': 10, 'max': 20}
+        taper_ranges = {'good': 8, 'average': 13, 'max': 20}
+        window_ranges = {'poor': target_diameter_um * 0.3, 'average': target_diameter_um * 0.6, 'max': target_diameter_um}
         
         g1, g2, g3 = st.columns(3)
         with g1:
@@ -104,16 +126,16 @@ def render():
         with g3:
             st.plotly_chart(create_angular_gauge(live_window, "Process Stability", "µm", window_ranges, higher_is_better=True), use_container_width=True)
 
-        # --- THE NEW, SMARTER "FINAL VERDICT" LOGIC ---
+        # --- THE SMARTER "FINAL VERDICT" LOGIC ---
         st.markdown("---")
         st.subheader("Final Verdict")
         
         with st.container(border=True):
-            # Define clear, readable thresholds
-            TAPER_REJECT_THRESHOLD = 13.0
-            TAPER_IDEAL_THRESHOLD = 8.0
-            BLOOMING_THRESHOLD_RATIO = 0.95 # Spot is significantly smaller
-            INEFFICIENT_FLUENCE_RATIO = 10.0
+            # Define clear, readable thresholds based on our gauge ranges
+            TAPER_REJECT_THRESHOLD = taper_ranges['average']
+            TAPER_IDEAL_THRESHOLD = taper_ranges['good']
+            BLOOMING_THRESHOLD_RATIO = 0.98 # Spot is significantly smaller
+            INEFFICIENT_FLUENCE_RATIO = energy_ranges['average']
 
             # 1. Check for the most critical failure first
             if live_taper > TAPER_REJECT_THRESHOLD:
@@ -138,4 +160,16 @@ def render():
             # 5. The catch-all "Good Compromise"
             else:
                  st.info("💡 **GOOD COMPROMISE**", icon="👌")
-                 st.markdown("This is a **robust and reliable** recipe. It achieves acceptable via quality with good efficiency and stability. A solid choice for production, though minor improvements may be possible.")
+                 st.markdown("This is a **robust and reliable** recipe. It achieves acceptable via quality with good efficiency and stability. A solid choice for production.")
+
+    # --- THE SCIENTIFIC EXPLANATION EXPANDER ---
+    st.markdown("---")
+    with st.expander("Understanding the Scorecard", expanded=False):
+        st.subheader("Energy Efficiency")
+        st.markdown("This gauge measures the **Fluence Ratio** (`Peak Fluence / Ablation Threshold`). A lower number is more efficient, as it means less excess energy is wasted as heat. The 'sweet spot' for most processes is between **2x and 10x** the threshold. Per your request, the optimal **Green Zone is 0-5x**.")
+        
+        st.subheader("Via Quality (Taper)")
+        st.markdown("This measures the **Taper Angle (θ)**. A lower angle means straighter walls, which is critical for reliable copper plating. For IC Substrates, an angle **below 8° is excellent (Green Zone)**, while an angle **above 13° is a high risk for manufacturing (Red Zone)**.")
+
+        st.subheader("Process Stability")
+        st.markdown("This measures the **Process Window** (`Top Diameter - Bottom Diameter`). A wider window indicates a more 'forgiving' and stable process that is less sensitive to small drifts in laser power. A good process window is typically **at least 60%** of the target top diameter.")
