@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from utils import UM_TO_CM, UJ_TO_J
-from modules.download_utils import create_download_hub # <-- STEP 1: IMPORT THE TOOLKIT
+from .download_utils import create_download_hub # <-- THE FIX IS HERE
 
 def render():
     st.header("Dose Target Recipe Explorer")
@@ -87,6 +87,5 @@ def render():
             use_container_width=True,
             hide_index=True
         )
-
-        # <-- STEP 2: USE THE TOOLKIT WITH THE RESULTS DATAFRAME ---
+        
         create_download_hub(df, "dose_recipes")
