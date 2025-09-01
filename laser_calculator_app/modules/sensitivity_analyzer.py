@@ -114,8 +114,8 @@ def render():
         st.subheader("The Engineer's Scorecard")
         
         # --- IMPLEMENTING YOUR EXACT RANGES ---
-        energy_ranges = {'good': 5, 'average': 10, 'max': 20}
-        taper_ranges = {'good': 8, 'average': 13, 'max': 20}
+        energy_ranges = {'good': 7, 'average': 10, 'max': 20}
+        taper_ranges = {'good': 10, 'average': 13, 'max': 20}
         window_ranges = {'poor': target_diameter_um * 0.3, 'average': target_diameter_um * 0.6, 'max': target_diameter_um}
         
         g1, g2, g3 = st.columns(3)
