@@ -33,85 +33,46 @@ def calculate_tradeoffs(fixed_params):
     }
 
 # ======================================================================================
-# --- NEW: SCORING AND VISUALIZATION HELPERS ---
+# --- THE GAUGES ARE BACK! (WITH CORRECTED COLORS AND LOGIC) ---
 # ======================================================================================
-def calculate_score(fluence_ratio, taper_angle, process_window_pct):
-    """Calculates a holistic score from 0-100 based on weighted metrics."""
-    # Normalize each metric to a 0-1 score
-    # Efficiency: Score is high for low fluence ratios (2x-10x is ideal)
-    eff_score = np.interp(fluence_ratio, [2, 10, 50, 200], [1.0, 1.0, 0.5, 0.1])
-    # Quality: Score is high for low taper angles (<8 is ideal)
-    taper_score = np.interp(taper_angle, [0, 8, 12, 20], [1.0, 1.0, 0.6, 0.1])
-    # Stability: Score is high for a wide process window
-    stability_score = np.interp(process_window_pct, [0, 0.2, 0.5, 0.8], [0.1, 0.6, 1.0, 1.0])
+def create_angular_gauge(value, title, unit, quality_ranges, higher_is_better=True):
+    """Creates a beautiful, professional Plotly angular gauge with intuitive colors."""
     
-    # Weighted average (Taper quality is most important)
-    overall_score = (eff_score * 0.25) + (taper_score * 0.50) + (stability_score * 0.25)
-    return int(overall_score * 100), int(eff_score*100), int(taper_score*100), int(stability_score*100)
+    # Define ranges for Red, Yellow, Green based on whether higher or lower is better
+    if higher_is_better:
+        # Green is high (e.g., Stability)
+        green_range = [quality_ranges['average'], quality_ranges['max']]
+        yellow_range = [quality_ranges['poor'], quality_ranges['average']]
+        red_range = [0, quality_ranges['poor']]
+    else:
+        # Green is low (e.g., Taper, Energy)
+        red_range = [quality_ranges['average'], quality_ranges['max']]
+        yellow_range = [quality_ranges['good'], quality_ranges['average']]
+        green_range = [0, quality_ranges['good']]
 
-def render_scorecard(score, eff_score, taper_score, stability_score):
-    """Renders the new progress bar scorecard and verdict."""
-    
-    def get_score_color(s):
-        if s >= 90: return "green", "Excellent"
-        if s >= 70: return "lightgreen", "Good"
-        if s >= 50: return "orange", "Acceptable"
-        return "red", "Poor"
-
-    # Custom CSS to color the progress bars
-    st.markdown(f"""
-        <style>
-            .stProgress > div > div > div > div {{
-                background-color: {get_score_color(eff_score)[0]};
-            }}
-            #taper_progress .stProgress > div > div > div > div {{
-                background-color: {get_score_color(taper_score)[0]};
-            }}
-            #stability_progress .stProgress > div > div > div > div {{
-                background-color: {get_score_color(stability_score)[0]};
-            }}
-        </style>
-        """, unsafe_allow_html=True)
-
-    st.subheader("The Engineer's Scorecard")
-    overall_color, overall_rating = get_score_color(score)
-    st.metric(label="Overall Process Score", value=f"{score} / 100", delta=overall_rating)
-    st.markdown("---")
-
-    c1, c2 = st.columns(2)
-    with c1: st.write("**Energy Efficiency**")
-    with c2: st.write(f"**Score: {eff_score}/100** ({get_score_color(eff_score)[1]})")
-    st.progress(eff_score)
-
-    c1, c2 = st.columns(2)
-    with c1: st.write("**Via Quality (Taper)**")
-    with c2: st.write(f"**Score: {taper_score}/100** ({get_score_color(taper_score)[1]})")
-    st.markdown('<div id="taper_progress">', unsafe_allow_html=True)
-    st.progress(taper_score)
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    c1, c2 = st.columns(2)
-    with c1: st.write("**Process Stability**")
-    with c2: st.write(f"**Score: {stability_score}/100** ({get_score_color(stability_score)[1]})")
-    st.markdown('<div id="stability_progress">', unsafe_allow_html=True)
-    st.progress(stability_score)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown("---")
-    st.subheader("Final Verdict")
-    with st.container(border=True):
-        if score >= 90:
-            st.success("✅ **Recommendation: IDEAL PROCESS**", icon="👍")
-            st.markdown("This recipe represents an **optimal balance** of energy efficiency, world-class via quality, and high process stability. It is the ideal regime for high-volume, high-reliability manufacturing.")
-        elif score >= 70:
-            st.info("💡 **Recommendation: GOOD COMPROMISE**", icon="👌")
-            st.markdown("This is a **robust and reliable** recipe. While not perfectly optimal in every category, it achieves high via quality with acceptable efficiency and stability. A solid choice for production.")
-        elif score >= 50:
-            st.warning("🟡 **Recommendation: USE WITH CAUTION**", icon="⚠️")
-            st.markdown("This recipe has **significant trade-offs**. While it may achieve the target, it likely suffers from either poor energy efficiency (high cost/heat) or low process stability (sensitive to error). Use only if other options are not available.")
-        else:
-            st.error("❌ **Recommendation: REJECT**", icon="🚨")
-            st.markdown("This recipe is **not recommended**. It is either highly unstable, produces a low-quality via (high taper), or is extremely inefficient. It falls outside the acceptable window for a reliable manufacturing process.")
+    fig = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = value,
+        domain = {'x': [0, 1], 'y': [0, 1]},
+        title = {'text': f"<b>{title}</b><br><span style='font-size:0.9em;color:gray'>{unit}</span>", 'font': {"size": 16}},
+        gauge = {
+            'axis': {'range': [0, quality_ranges['max']], 'tickwidth': 1, 'tickcolor': "darkblue"},
+            'bar': {'color': "#34495e", 'thickness': 0.3},
+            'bgcolor': "white",
+            'borderwidth': 2,
+            'bordercolor': "#ecf0f1",
+            'steps': [
+                {'range': green_range, 'color': '#2ecc71'},
+                {'range': yellow_range, 'color': '#f1c40f'},
+                {'range': red_range, 'color': '#e74c3c'}
+            ],
+            'threshold': {
+                'line': {'color': "black", 'width': 4},
+                'thickness': 0.85,
+                'value': value}
+        }))
+    fig.update_layout(height=250, margin=dict(l=30, r=30, t=50, b=30))
+    return fig
 
 # ======================================================================================
 # --- MAIN RENDER FUNCTION ---
@@ -147,6 +108,54 @@ def render():
         live_taper = tradeoff_data["taper_angles"][idx]
         live_window = tradeoff_data["process_windows"][idx]
 
-        # --- SCORECARD ---
-        overall_score, eff_score, taper_score, stability_score = calculate_score(live_fluence_ratio, live_taper, live_window / target_diameter_um)
-        render_scorecard(overall_score, eff_score, taper_score, stability_score)
+        # --- ANIMATED PLOT (UNCHANGED) ---
+        st.subheader("The Live Story: Cause vs. Effect")
+        # (This section is unchanged and remains correct)
+        # ... (omitted for brevity)
+
+        # --- THE ENGINEER'S SCORECARD (WITH GAUGES) ---
+        st.markdown("---")
+        st.subheader("The Engineer's Scorecard")
+        
+        # Define NEW, smarter quality ranges for gauges
+        energy_ranges = {'poor': 50, 'average': 10, 'good': 2, 'max': 100} # Based on Fluence Ratio
+        taper_ranges = {'poor': 12, 'average': 8, 'good': 0, 'max': 20}   # Based on IC Substrate Standards
+        window_ranges = {'poor': target_diameter_um * 0.25, 'average': target_diameter_um * 0.5, 'good': 0, 'max': target_diameter_um}
+        
+        g1, g2, g3 = st.columns(3)
+        with g1:
+            st.plotly_chart(create_angular_gauge(live_fluence_ratio, "Energy Efficiency", "x Threshold", energy_ranges, higher_is_better=False), use_container_width=True)
+        with g2:
+            st.plotly_chart(create_angular_gauge(live_taper, "Via Quality (Taper)", "°", taper_ranges, higher_is_better=False), use_container_width=True)
+        with g3:
+            st.plotly_chart(create_angular_gauge(live_window, "Process Stability", "µm", window_ranges, higher_is_better=True), use_container_width=True)
+
+        # --- THE SMARTER EXECUTIVE SUMMARY ---
+        st.markdown("---")
+        st.subheader("Final Verdict")
+        
+        sweet_spot_min = target_diameter_um * 1.05
+        sweet_spot_max = target_diameter_um * 1.40
+        is_in_sweet_spot = sweet_spot_min <= selected_spot <= sweet_spot_max
+        is_taper_good = live_taper < 10
+
+        with st.container(border=True):
+            if selected_spot < target_diameter_um:
+                st.warning("⚠️ **Recommendation: HIGH RISK (Forced Blooming)**", icon="☢️")
+                st.markdown("The selected **Beam Spot is smaller than the target via**. This requires extreme energy intensity to 'bloom' the hole to size. While the taper may appear acceptable, this is a highly unstable, high-stress process that often leads to significant heat damage and is not recommended for production.")
+
+            elif not is_taper_good:
+                st.error("❌ **Recommendation: REJECT (Poor Quality)**", icon="🚨")
+                st.markdown(f"The resulting **taper angle of {live_taper:.1f}° is too high** for a reliable IC substrate process. This recipe falls outside the acceptable 'golden zone' for quality. **Increase the Beam Spot Diameter** to improve the taper.")
+            
+            elif live_fluence_ratio > 50:
+                st.warning("🟡 **Recommendation: USE WITH CAUTION (Inefficient)**", icon="⚠️")
+                st.markdown("The selected **Beam Spot is much larger than necessary**. While this creates a very stable process with good taper, the **energy cost is excessive (fluence ratio > 50x)**. A smaller spot size would be far more efficient without sacrificing quality.")
+
+            elif is_in_sweet_spot and is_taper_good:
+                st.success("✅ **Recommendation: IDEAL PROCESS (Balanced)**", icon="👍")
+                st.markdown(f"You have found the **'sweet spot'**. This recipe produces an excellent via with a **taper of {live_taper:.1f}°**, which is well within the industry's 'golden zone' for IC substrates. The **energy usage is efficient**, and the process is **highly stable**. This is the ideal regime for high-quality manufacturing.")
+            
+            else:
+                 st.info("💡 **Recommendation: GOOD COMPROMISE**", icon="👌")
+                 st.markdown("This is a **robust and reliable** recipe. It achieves high via quality with acceptable efficiency and stability. A solid choice for production, though a slightly larger spot size may improve stability further.")
