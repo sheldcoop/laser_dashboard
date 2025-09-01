@@ -120,7 +120,7 @@ def render():
         
         # Define dynamic quality ranges for gauges
         energy_ranges = {'poor': np.percentile(tradeoff_data["pulse_energies"], 80), 'average': np.percentile(tradeoff_data["pulse_energies"], 40), 'good': 0, 'max': np.max(tradeoff_data["pulse_energies"]), 'good_threshold': np.percentile(tradeoff_data["pulse_energies"], 20)}
-        taper_ranges = {'poor': 12, 'average': 8, 'good': 0, 'max': 20, 'good_threshold': 10} # Based on your rule
+        taper_ranges = {'poor': 15, 'average': 12, 'good': 0, 'max': 20, 'good_threshold': 10} # Based on your rule
         window_ranges = {'poor': np.percentile(tradeoff_data["process_windows"], 20), 'average': np.percentile(tradeoff_data["process_windows"], 60), 'good': np.max(tradeoff_data["process_windows"]), 'max': np.max(tradeoff_data["process_windows"]), 'good_threshold': np.percentile(tradeoff_data["process_windows"], 80)}
         
         g1, g2, g3 = st.columns(3)
@@ -140,7 +140,7 @@ def render():
         sweet_spot_max = target_diameter_um * 1.20
 
         is_in_sweet_spot = sweet_spot_min <= selected_spot <= sweet_spot_max
-        is_taper_good = live_taper < 15
+        is_taper_good = live_taper < 12
 
         with st.container(border=True):
             if not is_taper_good:
