@@ -206,8 +206,8 @@ def render_goal_seeker_inputs():
 
     with st.container(border=True):
         st.markdown("<h5>🔬 Material Properties</h5>", unsafe_allow_html=True)
-        p["ablation_threshold_j_cm2"] = st.number_input("Ablation Threshold (J/cm²)", 0.01, 20.0, 0.9, 0.01)
-        p["alpha_inv"] = st.number_input("Penetration Depth (α⁻¹) (µm)", 0.01, 10.0, 0.8, 0.01)
+        p["ablation_threshold_j_cm2"] = st.number_input("Ablation Threshold (J/cm²)", 0.01, 20.0, 0.10, 0.01)
+        p["alpha_inv"] = st.number_input("Penetration Depth (α⁻¹) (µm)", 0.01, 10.0, 0.3, 0.01)
 
     return p
 
