@@ -7,7 +7,9 @@ from utils import UM_TO_CM, UJ_TO_J
 def render():
     st.header("Dose Target Recipe Explorer")
     st.markdown("---")
-    st.info("Explore all combinations of Power and Shots required to achieve a specific Cumulative Dose.", icon="探索")
+    
+    # --- THIS IS THE CORRECTED LINE ---
+    st.info("Explore all combinations of Power and Shots required to achieve a specific Cumulative Dose.", icon="ℹ️")
 
     with st.container(border=True):
         # --- INPUTS ---
@@ -36,16 +38,13 @@ def render():
             # --- CORE CALCULATIONS ---
             area_cm2 = np.pi * ((beam_diameter_um / 2.0) * UM_TO_CM)**2
             
-            # Generate a range of shots for the plot and table
             shots_range = np.arange(min_shots, max_shots + 1)
             
-            # Calculate required parameters for each number of shots
             required_peak_fluence = target_dose / shots_range
             required_pulse_energy_J = (required_peak_fluence * area_cm2) / 2.0
             required_avg_power_W = required_pulse_energy_J * (rep_rate_khz * 1000)
             required_avg_power_mW = required_avg_power_W * 1000
             
-            # Create a DataFrame for the results table
             df = pd.DataFrame({
                 "Number of Shots": shots_range,
                 "Required Avg. Power (mW)": required_avg_power_mW,
@@ -53,14 +52,10 @@ def render():
                 "Implied Pulse Energy (µJ)": (required_avg_power_mW / rep_rate_khz)
             })
             
-            # Add a column to check if the recipe is possible on the user's machine
             df["Achievable"] = df["Required Avg. Power (mW)"] <= max_power_mW
             
-            # --- CREATE PLOT ---
             fig = go.Figure()
-            # Add the main trade-off curve
             fig.add_trace(go.Scatter(x=df["Number of Shots"], y=df["Required Avg. Power (mW)"], mode='lines', name='Required Power'))
-            # Add a horizontal line for the machine's power limit
             fig.add_hline(y=max_power_mW, line_dash="dash", line_color="red", annotation_text="Your Max Power", annotation_position="bottom right")
             fig.update_layout(
                 title="Power vs. Shots Trade-Off",
@@ -68,7 +63,6 @@ def render():
                 yaxis_title="Required Average Power (mW)",
             )
             
-            # Store results in session state for display
             st.session_state.dose_explorer_results = {"figure": fig, "dataframe": df}
 
         except Exception as e:
@@ -82,19 +76,16 @@ def render():
         st.markdown("---")
         st.markdown(f'<p class="results-header">Recipe Exploration Canvas</p>', unsafe_allow_html=True)
         
-        # Display the interactive plot
         st.plotly_chart(fig, use_container_width=True)
 
         st.markdown(f'<p class="results-header">Possible Recipes Table</p>', unsafe_allow_html=True)
         
-        # Function to style the DataFrame
         def style_achievable(row):
             if row.Achievable:
-                return ['background-color: #d1fae5'] * len(row) # Light green
+                return ['background-color: #d1fae5'] * len(row)
             else:
-                return ['background-color: #fee2e2'] * len(row) # Light red
+                return ['background-color: #fee2e2'] * len(row)
 
-        # Display the styled DataFrame
         st.dataframe(
             df.style.apply(style_achievable, axis=1).format({
                 "Required Avg. Power (mW)": "{:.2f}",
