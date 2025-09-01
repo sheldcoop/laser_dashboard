@@ -160,14 +160,14 @@ def render_interactive_simulator_inputs():
         st.markdown("<h5>Material Properties</h5>", unsafe_allow_html=True)
         c1, c2 = st.columns([3, 2])
         with c1:
-            st.slider("Ablation Threshold (J/cm²)", 0.01, 5.0, key="at_slider", value=st.session_state.ablation_threshold, on_change=sync_widget, args=("at_slider", "ablation_threshold"))
+            st.slider("Ablation Threshold (J/cm²)", 0.01, 2.0, key="at_slider", value=st.session_state.ablation_threshold, on_change=sync_widget, args=("at_slider", "ablation_threshold"))
         with c2:
             st.number_input("AT Value", min_value=0.01, max_value=5.0, step=0.01, key="at_num", value=st.session_state.ablation_threshold, on_change=sync_widget, args=("at_num", "ablation_threshold"), label_visibility="collapsed")
         
         st.markdown("---")
         c1, c2 = st.columns([3, 2])
         with c1:
-            st.slider("Penetration Depth (α⁻¹) (µm)", 0.01, 5.0, key="ai_slider", value=st.session_state.alpha_inv, on_change=sync_widget, args=("ai_slider", "alpha_inv"))
+            st.slider("Penetration Depth (α⁻¹) (µm)", 0.01, 2.0, key="ai_slider", value=st.session_state.alpha_inv, on_change=sync_widget, args=("ai_slider", "alpha_inv"))
         with c2:
             st.number_input("AI Value", min_value=0.01, max_value=5.0, step=0.01, key="ai_num", value=st.session_state.alpha_inv, on_change=sync_widget, args=("ai_num", "alpha_inv"), label_visibility="collapsed")
 
