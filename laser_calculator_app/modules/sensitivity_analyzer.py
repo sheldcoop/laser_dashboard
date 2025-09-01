@@ -140,7 +140,7 @@ def render():
         sweet_spot_max = target_diameter_um * 1.20
 
         is_in_sweet_spot = sweet_spot_min <= selected_spot <= sweet_spot_max
-        is_taper_good = live_taper < 10
+        is_taper_good = live_taper < 15
 
         with st.container(border=True):
             if not is_taper_good:
