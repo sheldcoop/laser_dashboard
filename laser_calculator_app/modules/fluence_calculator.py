@@ -1,6 +1,8 @@
 import streamlit as st
+import pandas as pd
 from utils import parse_text_input, convert_df_to_csv
 from core.fluence import calculate_fluence
+from modules.download_utils import create_download_hub # <-- STEP 1: IMPORT THE TOOLKIT
 
 def render():
     st.header("Calculate Fluence & Cumulative Dose")
@@ -65,7 +67,7 @@ def render():
                     return
             
             with st.spinner("Calculating..."):
-                results_df = calculate_fluence(
+                results_.df = calculate_fluence(
                     diameter_list=diameter_list, shots_list=shots_list,
                     energy_list=energy_list, power_list=power_list, rate_list=rate_list
                 )
@@ -107,8 +109,5 @@ def render():
         }
         st.dataframe(df[cols_to_show].style.format(formatters), use_container_width=True, hide_index=True)
 
-        csv_data = convert_df_to_csv(df[cols_to_show])
-        st.download_button(
-            label="Download Results as CSV", data=csv_data,
-            file_name="fluence_calculator_results.csv", mime="text/csv", use_container_width=True
-        )
+        # --- STEP 2: USE THE MASTER TOOLKIT ---
+        create_download_hub(df[cols_to_show], "fluence_results")
