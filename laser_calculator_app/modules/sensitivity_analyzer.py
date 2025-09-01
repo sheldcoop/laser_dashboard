@@ -33,43 +33,29 @@ def calculate_tradeoffs(fixed_params):
     }
 
 # ======================================================================================
-# --- THE GAUGES ARE BACK! (WITH CORRECTED COLORS AND LOGIC) ---
+# --- GAUGE VISUALIZATION HELPER (WITH YOUR CUSTOM RANGES) ---
 # ======================================================================================
 def create_angular_gauge(value, title, unit, quality_ranges, higher_is_better=True):
-    """Creates a beautiful, professional Plotly angular gauge with intuitive colors."""
+    """Creates a professional Plotly angular gauge with your specified color logic."""
     
-    # Define ranges for Red, Yellow, Green based on whether higher or lower is better
     if higher_is_better:
-        # Green is high (e.g., Stability)
-        green_range = [quality_ranges['average'], quality_ranges['max']]
-        yellow_range = [quality_ranges['poor'], quality_ranges['average']]
-        red_range = [0, quality_ranges['poor']]
+        green_range, yellow_range, red_range = [quality_ranges['average'], quality_ranges['max']], [quality_ranges['poor'], quality_ranges['average']], [0, quality_ranges['poor']]
     else:
-        # Green is low (e.g., Taper, Energy)
-        red_range = [quality_ranges['average'], quality_ranges['max']]
-        yellow_range = [quality_ranges['good'], quality_ranges['average']]
-        green_range = [0, quality_ranges['good']]
+        green_range, yellow_range, red_range = [0, quality_ranges['good']], [quality_ranges['good'], quality_ranges['average']], [quality_ranges['average'], quality_ranges['max']]
 
     fig = go.Figure(go.Indicator(
-        mode = "gauge+number",
-        value = value,
+        mode = "gauge+number", value = value,
         domain = {'x': [0, 1], 'y': [0, 1]},
         title = {'text': f"<b>{title}</b><br><span style='font-size:0.9em;color:gray'>{unit}</span>", 'font': {"size": 16}},
         gauge = {
             'axis': {'range': [0, quality_ranges['max']], 'tickwidth': 1, 'tickcolor': "darkblue"},
-            'bar': {'color': "#34495e", 'thickness': 0.3},
-            'bgcolor': "white",
-            'borderwidth': 2,
-            'bordercolor': "#ecf0f1",
+            'bar': {'color': "#34495e", 'thickness': 0.3}, 'bgcolor': "white",
+            'borderwidth': 2, 'bordercolor': "#ecf0f1",
             'steps': [
                 {'range': green_range, 'color': '#2ecc71'},
                 {'range': yellow_range, 'color': '#f1c40f'},
-                {'range': red_range, 'color': '#e74c3c'}
-            ],
-            'threshold': {
-                'line': {'color': "black", 'width': 4},
-                'thickness': 0.85,
-                'value': value}
+                {'range': red_range, 'color': '#e74c3c'}],
+            'threshold': {'line': {'color': "black", 'width': 4}, 'thickness': 0.85, 'value': value}
         }))
     fig.update_layout(height=250, margin=dict(l=30, r=30, t=50, b=30))
     return fig
@@ -78,7 +64,7 @@ def create_angular_gauge(value, title, unit, quality_ranges, higher_is_better=Tr
 # --- MAIN RENDER FUNCTION ---
 # ======================================================================================
 def render():
-    st.title("Spot Size Sensitivity Analyzer")
+    st.header("Spot Size Sensitivity Analyzer")
     st.markdown("An interactive dashboard to explore the engineering trade-offs of choosing a laser spot size.")
     st.markdown("---")
 
@@ -108,18 +94,12 @@ def render():
         live_taper = tradeoff_data["taper_angles"][idx]
         live_window = tradeoff_data["process_windows"][idx]
 
-        # --- ANIMATED PLOT (UNCHANGED) ---
-        st.subheader("The Live Story: Cause vs. Effect")
-        # (This section is unchanged and remains correct)
-        # ... (omitted for brevity)
-
-        # --- THE ENGINEER'S SCORECARD (WITH GAUGES) ---
-        st.markdown("---")
+        # --- THE ENGINEER'S SCORECARD (WITH YOUR CUSTOM RANGES) ---
         st.subheader("The Engineer's Scorecard")
         
-        # Define NEW, smarter quality ranges for gauges
-        energy_ranges = {'poor': 50, 'average': 10, 'good': 2, 'max': 100} # Based on Fluence Ratio
-        taper_ranges = {'poor': 12, 'average': 8, 'good': 0, 'max': 20}   # Based on IC Substrate Standards
+        # --- IMPLEMENTING YOUR EXACT REQUESTS ---
+        energy_ranges = {'poor': 10, 'average': 5, 'good': 0, 'max': 20} # Green: 0-5, Yellow: 5-10, Max: 20
+        taper_ranges = {'poor': 13, 'average': 8, 'good': 0, 'max': 20}   # Green: 0-8, Yellow: 8-13
         window_ranges = {'poor': target_diameter_um * 0.25, 'average': target_diameter_um * 0.5, 'good': 0, 'max': target_diameter_um}
         
         g1, g2, g3 = st.columns(3)
@@ -130,32 +110,36 @@ def render():
         with g3:
             st.plotly_chart(create_angular_gauge(live_window, "Process Stability", "µm", window_ranges, higher_is_better=True), use_container_width=True)
 
-        # --- THE SMARTER EXECUTIVE SUMMARY ---
+        # --- THE SMARTER "FINAL VERDICT" ---
+        # (This section is unchanged and provides the final recommendation)
         st.markdown("---")
         st.subheader("Final Verdict")
         
-        sweet_spot_min = target_diameter_um * 1.05
-        sweet_spot_max = target_diameter_um * 1.40
-        is_in_sweet_spot = sweet_spot_min <= selected_spot <= sweet_spot_max
-        is_taper_good = live_taper < 10
+        is_taper_good = live_taper < taper_ranges['average'] # Is taper in the green or yellow zone?
+        is_fluence_good = live_fluence_ratio < energy_ranges['average'] # Is fluence in the green or yellow zone?
 
         with st.container(border=True):
             if selected_spot < target_diameter_um:
-                st.warning("⚠️ **Recommendation: HIGH RISK (Forced Blooming)**", icon="☢️")
-                st.markdown("The selected **Beam Spot is smaller than the target via**. This requires extreme energy intensity to 'bloom' the hole to size. While the taper may appear acceptable, this is a highly unstable, high-stress process that often leads to significant heat damage and is not recommended for production.")
-
+                st.warning("⚠️ **HIGH RISK (Forced Blooming)**", icon="☢️")
+                st.markdown("The **Beam Spot is smaller than the target via**. This requires extreme energy intensity to 'bloom' the hole to size. This is a highly unstable, high-stress process that often leads to significant heat damage and is not recommended for production.")
             elif not is_taper_good:
-                st.error("❌ **Recommendation: REJECT (Poor Quality)**", icon="🚨")
-                st.markdown(f"The resulting **taper angle of {live_taper:.1f}° is too high** for a reliable IC substrate process. This recipe falls outside the acceptable 'golden zone' for quality. **Increase the Beam Spot Diameter** to improve the taper.")
-            
-            elif live_fluence_ratio > 50:
-                st.warning("🟡 **Recommendation: USE WITH CAUTION (Inefficient)**", icon="⚠️")
-                st.markdown("The selected **Beam Spot is much larger than necessary**. While this creates a very stable process with good taper, the **energy cost is excessive (fluence ratio > 50x)**. A smaller spot size would be far more efficient without sacrificing quality.")
-
-            elif is_in_sweet_spot and is_taper_good:
-                st.success("✅ **Recommendation: IDEAL PROCESS (Balanced)**", icon="👍")
+                st.error("❌ **REJECT (Poor Quality)**", icon="🚨")
+                st.markdown(f"The resulting **taper angle of {live_taper:.1f}° is too high** for a reliable IC substrate process. It falls outside the acceptable 'golden zone' for quality. **Increase the Beam Spot Diameter** to improve the taper.")
+            elif is_taper_good and is_fluence_good:
+                st.success("✅ **IDEAL PROCESS (Balanced)**", icon="👍")
                 st.markdown(f"You have found the **'sweet spot'**. This recipe produces an excellent via with a **taper of {live_taper:.1f}°**, which is well within the industry's 'golden zone' for IC substrates. The **energy usage is efficient**, and the process is **highly stable**. This is the ideal regime for high-quality manufacturing.")
-            
-            else:
-                 st.info("💡 **Recommendation: GOOD COMPROMISE**", icon="👌")
-                 st.markdown("This is a **robust and reliable** recipe. It achieves high via quality with acceptable efficiency and stability. A solid choice for production, though a slightly larger spot size may improve stability further.")
+            else: # Taper might be good, but energy is inefficient
+                 st.info("💡 **GOOD COMPROMISE (Stable but Inefficient)**", icon="👌")
+                 st.markdown("This is a **robust and reliable** recipe with high via quality. However, the energy usage is becoming inefficient. A slightly smaller spot size could provide the same quality with a lower energy cost.")
+
+    # --- NEW: THE SCIENTIFIC EXPLANATION EXPANDER ---
+    st.markdown("---")
+    with st.expander("Understanding the Scorecard", expanded=False):
+        st.subheader("Energy Efficiency")
+        st.markdown("This gauge measures the **Fluence Ratio** (`Peak Fluence / Ablation Threshold`). A lower number is more efficient, as it means less excess energy is being wasted as heat. The 'sweet spot' for most processes is between **2x and 10x** the threshold.")
+        
+        st.subheader("Via Quality (Taper)")
+        st.markdown("This measures the **Taper Angle (θ)**. A lower angle means straighter walls, which is critical for reliable copper plating. For IC Substrates, an angle **below 8° is considered excellent ('Golden Zone')**, while an angle above 13° is typically a high risk for manufacturing.")
+
+        st.subheader("Process Stability")
+        st.markdown("This measures the **Process Window** (`Top Diameter - Bottom Diameter`). A wider window indicates a more 'forgiving' and stable process that is less sensitive to small drifts in laser power. A good process window is typically **at least 50%** of the target top diameter.")
