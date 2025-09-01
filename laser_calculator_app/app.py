@@ -4,7 +4,7 @@ import streamlit as st
 from modules import (
     home, process_recommender, material_analyzer, liu_plot_analyzer, 
     thermal_effects_calculator, beam_profile_visualizer, mask_finder, 
-    pulse_energy_calculator, fluence_calculator, dose_target_seeker,
+    pulse_energy_calculator, fluence_calculator, dose_target_seeker, senstivity_analyzer,
     documentation  # <-- 1. Import the new documentation module
 )
 
@@ -81,6 +81,7 @@ TOOL_CATEGORIES = {
     "Advanced Analysis": {
         "Liu Plot Analyzer": liu_plot_analyzer,
         "Thermal Effects Calculator": thermal_effects_calculator,
+        "Spot Size Analyzer": senstivity_analyzer
     },
     "Fundamental Calculators": {
         "Mask Finder": mask_finder,
