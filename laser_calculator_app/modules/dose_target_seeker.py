@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from utils import UM_TO_CM, UJ_TO_J
-from modules.download_utils import create_download_hub # <-- IMPORT THE TOOLKIT
+from modules.download_utils import create_download_hub
 
 def render():
     st.header("Dose Target Recipe Explorer")
@@ -11,7 +11,6 @@ def render():
     st.info("Explore all combinations of Power and Shots required to achieve a specific Cumulative Dose.", icon="ℹ️")
 
     with st.container(border=True):
-        # (The entire input section is unchanged)
         col1, col2 = st.columns(2)
         with col1:
             st.subheader("🎯 Process Goal")
@@ -27,7 +26,6 @@ def render():
         calculate_button = st.button("Explore Possible Recipes", use_container_width=True, type="primary")
 
     if calculate_button:
-        # (The calculation logic is unchanged)
         try:
             if min_shots >= max_shots:
                 st.error("Minimum Practical Shots must be less than Maximum Practical Shots."); return
@@ -48,16 +46,28 @@ def render():
             st.error(f"An error occurred during calculation: {e}")
 
     if 'dose_explorer_results' in st.session_state:
-        # (The results display is unchanged)
         results = st.session_state.dose_explorer_results
         fig = results["figure"]
         df = results["dataframe"]
         st.markdown("---"); st.markdown(f'<p class="results-header">Recipe Exploration Canvas</p>', unsafe_allow_html=True)
         st.plotly_chart(fig, use_container_width=True)
         st.markdown(f'<p class="results-header">Possible Recipes Table</p>', unsafe_allow_html=True)
+        
         def style_achievable(row):
-            return ['background-color: #d1fae5' if row.Achievable else '#fee2e2'] * len(row)
-        st.dataframe(df.style.apply(style_achievable, axis=1).format({"Required Avg. Power (mW)": "{:.2f}", "Resulting Peak Fluence (J/cm²)": "{:.3f}", "Implied Pulse Energy (µJ)": "{:.3f}"}), use_container_width=True, hide_index=True)
+            if row.Achievable: return ['background-color: #d1fae5'] * len(row)
+            else: return ['background-color: #fee2e2'] * len(row)
 
-        # --- USE THE TOOLKIT WITH THE RESULTS DATAFRAME ---
+        # --- THIS IS THE FIXED DATAFRAME DISPLAY ---
+        st.dataframe(
+            df.style.apply(style_achievable, axis=1),
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Required Avg. Power (mW)": st.column_config.NumberColumn(format="%.2f"),
+                "Resulting Peak Fluence (J/cm²)": st.column_config.NumberColumn(format="%.3f"),
+                "Implied Pulse Energy (µJ)": st.column_config.NumberColumn(format="%.3f"),
+                "Achievable": None # Hide this column
+            }
+        )
+        
         create_download_hub(df, "dose_recipes")
