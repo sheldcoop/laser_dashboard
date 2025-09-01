@@ -4,7 +4,7 @@ import streamlit as st
 from modules import (
     home, process_recommender, material_analyzer, liu_plot_analyzer, 
     thermal_effects_calculator, beam_profile_visualizer, mask_finder, 
-    pulse_energy_calculator, fluence_calculator, 
+    pulse_energy_calculator, fluence_calculator, dose_target_seeker
     documentation  # <-- 1. Import the new documentation module
 )
 
@@ -86,6 +86,7 @@ TOOL_CATEGORIES = {
         "Mask Finder": mask_finder,
         "Pulse Energy": pulse_energy_calculator,
         "Fluence (Energy Density)": fluence_calculator,
+        "Dose Finder" :dose_target_seeker
     }
 }
 
