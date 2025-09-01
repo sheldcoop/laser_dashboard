@@ -133,7 +133,7 @@ def render_interactive_simulator_inputs():
 
     # Initialize master state variables if they don't exist
     for key, default in [("pulse_energy", 10.00), ("beam_diameter", 30.01), ("ablation_threshold", 0.18),
-                         ("alpha_inv", 0.94), ("material_thickness", 50.0)]:
+                         ("alpha_inv", 0.30), ("material_thickness", 50.0)]:
         if key not in st.session_state:
             st.session_state[key] = float(params.get(key, default))
     if "number_of_shots" not in st.session_state:
