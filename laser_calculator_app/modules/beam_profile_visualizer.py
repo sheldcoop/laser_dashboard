@@ -132,8 +132,8 @@ def render_interactive_simulator_inputs():
     p = {}
 
     # Initialize master state variables if they don't exist
-    for key, default in [("pulse_energy", 1.50), ("beam_diameter", 11.50), ("ablation_threshold", 0.20),
-                         ("alpha_inv", 0.45), ("material_thickness", 50.0)]:
+    for key, default in [("pulse_energy", 10.00), ("beam_diameter", 30.01), ("ablation_threshold", 0.18),
+                         ("alpha_inv", 0.94), ("material_thickness", 50.0)]:
         if key not in st.session_state:
             st.session_state[key] = float(params.get(key, default))
     if "number_of_shots" not in st.session_state:
@@ -272,7 +272,6 @@ def render_interactive_simulator_results(p, results):
 
     with st.expander("Show Interactive 3D Via Visualization"):
         if results['max_depth_per_pulse'] > 0:
-            # Re-calculating 3D mesh data is unavoidable here, but it's okay as it's in an expander.
             x_3d, y_3d = np.meshgrid(results['r_um'], results['r_um'])
             R_sq = x_3d**2 + y_3d**2
             
@@ -334,7 +333,7 @@ def render_goal_seeker_results(recipe, p):
         st.session_state.switch_to_simulator = True
         # Also update the master state variables directly
         st.session_state.pulse_energy = recipe['pulse_energy_uJ']
-        st.session_state.number_of_shots = recipe['number_of_shots']
+        st.session_state.number_of_shots = int(recipe['number_of_shots'])
         st.session_state.beam_diameter = p['beam_diameter_um']
         st.session_state.ablation_threshold = p['ablation_threshold_j_cm2']
         st.session_state.alpha_inv = p['alpha_inv']
