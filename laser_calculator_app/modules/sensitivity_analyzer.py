@@ -4,25 +4,21 @@ import plotly.graph_objects as go
 from utils import UM_TO_CM, UJ_TO_J
 
 # ======================================================================================
-# --- NEW: CALCULATION ENGINE WITH CORRECTED LOGIC ---
+# --- CALCULATION ENGINE (UNCHANGED) ---
 # ======================================================================================
 @st.cache_data
 def calculate_tradeoffs(fixed_params):
     p = dict(fixed_params)
     spot_diameters = np.linspace(p['min_spot'], p['max_spot'], 200)
-    w0s_um = spot_diameters / 2.0
-    w0s_cm = w0s_um * UM_TO_CM
+    w0s_um = spot_diameters / 2.0; w0s_cm = w0s_um * UM_TO_CM
     
-    # NEW LOGIC: Calculate Peak Fluence based on the FIXED pulse energy and VARYING spot size
     peak_fluence = (2 * (p['pulse_energy_uJ'] * UJ_TO_J)) / (np.pi * w0s_cm**2)
     fluence_ratio = peak_fluence / p['ablation_threshold']
     
-    # Calculate the RESULTING Top Diameter (it's now an output, not an input)
     log_term_top = np.log(np.maximum(1, fluence_ratio))
     top_diameter_um = np.sqrt(2 * w0s_um**2 * log_term_top)
     top_diameter_um = np.nan_to_num(top_diameter_um)
 
-    # The rest of the physics flows from this
     depth_per_pulse = p['penetration_depth'] * log_term_top
     total_shots = np.ceil(p['material_thickness'] / np.maximum(1e-9, depth_per_pulse)) + p['overkill_shots']
     
@@ -41,10 +37,10 @@ def calculate_tradeoffs(fixed_params):
     }
 
 # ======================================================================================
-# --- VISUALIZATION HELPER FUNCTIONS ---
+# --- VISUALIZATION HELPER FUNCTIONS (GAUGE IS UNCHANGED, PREVIEW IS REBUILT) ---
 # ======================================================================================
 def create_angular_gauge(value, title, unit, quality_ranges, higher_is_better=True):
-    # This function is unchanged and correct.
+    # This function is correct and remains unchanged.
     if higher_is_better:
         green_range, yellow_range, red_range = [quality_ranges['average'], quality_ranges['max']], [quality_ranges['poor'], quality_ranges['average']], [0, quality_ranges['poor']]
     else:
@@ -57,26 +53,39 @@ def create_angular_gauge(value, title, unit, quality_ranges, higher_is_better=Tr
     fig.update_layout(height=250, margin=dict(l=30, r=30, t=50, b=30))
     return fig
 
+# --- THE NEW, ROBUST, AND FINAL "INTERACTIVE ENGINEERING BLUEPRINT" FUNCTION ---
 def create_geometry_preview(top_d, bottom_d, height, taper):
-    """Creates the rich, annotated 'Interactive Engineering Blueprint'."""
+    """Creates the rich, annotated 'Interactive Engineering Blueprint' using robust Scatter traces."""
+    
+    # Safety check for valid inputs
+    if not all(np.isfinite([top_d, bottom_d, height, taper])) or top_d <= 0 or height <= 0:
+        return go.Figure().update_layout(
+            height=350, annotations=[dict(text="Invalid geometry to display", showarrow=False)]
+        )
+
     max_width = top_d * 1.6
     fig = go.Figure()
 
-    # 1. Solid material block with gradient
-    fig.add_shape(type="rect", x0=-max_width/2, y0=0, x1=max_width/2, y1=-height,
-                  fillcolor="rgba(220, 220, 220, 0.7)", line_width=0, layer="below")
+    # 1. Draw the solid material block using a filled Scatter trace
+    material_x = [-max_width/2, max_width/2, max_width/2, -max_width/2]
+    material_y = [0, 0, -height, -height]
+    fig.add_trace(go.Scatter(x=material_x, y=material_y, fill="toself",
+                             fillcolor='rgba(236, 240, 241, 0.9)',
+                             line=dict(color='rgba(189, 195, 199, 0.7)'), mode='lines'))
 
-    # 2. "Ideal Via" ghost (a semi-transparent rectangle)
-    fig.add_shape(type="rect", x0=-top_d/2, y0=0, x1=top_d/2, y1=-height,
-                  line=dict(color="rgba(50, 50, 50, 0.5)", width=2, dash="dot"), layer="below",
-                  fillcolor="rgba(200, 200, 200, 0.1)")
+    # 2. Draw the "Ideal Via" ghost as a dotted line trace
+    ideal_x = [-top_d/2, top_d/2, top_d/2, -top_d/2, -top_d/2]
+    ideal_y = [0, 0, -height, -height, 0]
+    fig.add_trace(go.Scatter(x=ideal_x, y=ideal_y, mode='lines',
+                             line=dict(color="rgba(50, 50, 50, 0.5)", width=2, dash="dot")))
 
-    # 3. Actual via cutout with inner shadow effect (using a gradient)
-    fig.add_shape(type="path",
-                  path=f"M {-top_d/2},0 L {top_d/2},0 L {bottom_d/2},{-height} L {-bottom_d/2},{-height} Z",
-                  fillcolor="white", line=dict(color="#3498db", width=3), layer="below")
+    # 3. Draw the actual via cutout (trapezoid) by overlaying a filled white polygon
+    via_x = [-top_d/2, top_d/2, bottom_d/2, -bottom_d/2]
+    via_y = [0, 0, -height, -height]
+    fig.add_trace(go.Scatter(x=via_x, y=via_y, fill="toself", fillcolor='white',
+                             line=dict(color='#3498db', width=3), mode='lines'))
 
-    # 4. Rich, CAD-Style Annotations
+    # 4. Add Rich, CAD-Style Annotations
     fig.add_shape(type="line", x0=-top_d/2, y0=height*0.2, x1=top_d/2, y1=height*0.2, line=dict(color="black", width=1))
     fig.add_annotation(x=0, y=height*0.25, text=f"Top: {top_d:.2f} µm", showarrow=False, yanchor="bottom")
     if bottom_d > 0.1:
@@ -101,18 +110,20 @@ def render():
     col_inputs, col_outputs = st.columns([2, 3], gap="large")
 
     with col_inputs:
+        # --- CONTROL PANEL ---
         st.subheader("1. Define Your Fixed Recipe")
         with st.container(border=True):
-            pulse_energy_uJ = st.number_input("Fixed Pulse Energy (µJ)", 1.0, 100.0, 20.0, 0.5)
+            pulse_energy_uJ = st.number_input("Fixed Pulse Energy (µJ)", 1.0, 100.0, 3.0, 0.5)
             material_thickness = st.number_input("Material Thickness (µm)", 1.0, 200.0, 35.0, 1.0)
-            ablation_threshold = st.number_input("Ablation Threshold (J/cm²)", 0.01, 10.0, 0.18, 0.01)
+            ablation_threshold = st.number_input("Ablation Threshold (J/cm²)", 0.01, 10.0, 0.19, 0.01)
             penetration_depth = st.number_input("Penetration Depth (µm)", 0.01, 10.0, 0.90, 0.01)
 
         st.subheader("2. Explore the Trade-Off")
         with st.container(border=True):
-            selected_spot = st.slider("Select a Beam Spot Diameter to analyze (µm)", min_value=10.0, max_value=80.0, value=30.0)
+            selected_spot = st.slider("Select a Beam Spot Diameter to analyze (µm)", min_value=10.0, max_value=80.0, value=27.08)
 
     with col_outputs:
+        # --- CALCULATIONS ---
         fixed_params = {"pulse_energy_uJ": pulse_energy_uJ, "material_thickness": material_thickness, "ablation_threshold": ablation_threshold, "penetration_depth": penetration_depth, "min_spot": 10.0, "max_spot": 80.0, "overkill_shots": 10}
         tradeoff_data = calculate_tradeoffs(frozenset(fixed_params.items()))
         idx = np.argmin(np.abs(tradeoff_data["spot_diameters"] - selected_spot))
@@ -130,7 +141,7 @@ def render():
         st.subheader("The Engineer's Scorecard")
         energy_ranges = {'good': 7, 'average': 10, 'max': 20}
         taper_ranges = {'good': 10, 'average': 13, 'max': 20}
-        window_ranges = {'poor': live_top_d * 0.3, 'average': live_top_d * 0.6, 'max': live_top_d if live_top_d > 0 else 1}
+        window_ranges = {'poor': live_top_d * 0.3, 'average': live_top_d * 0.6, 'max': live_top_d if live_top_d > 0.1 else 1.0}
         
         g1, g2, g3 = st.columns(3)
         with g1: st.plotly_chart(create_angular_gauge(live_fluence_ratio, "Energy Efficiency", "x Threshold", energy_ranges, higher_is_better=False), use_container_width=True)
@@ -144,7 +155,7 @@ def render():
             TAPER_IDEAL_THRESHOLD = taper_ranges['good']
             INEFFICIENT_FLUENCE_RATIO = energy_ranges['average']
 
-            if live_top_d < 5: # Catches cases where ablation is barely happening
+            if live_top_d < 5:
                  st.error("❌ **REJECT (No Effective Process)**", icon="🚨")
                  st.markdown("The fluence is too low at this spot size to create a meaningful via. The process is not viable. You must **increase the Pulse Energy** or **decrease the Beam Spot Diameter**.")
             elif live_taper > TAPER_REJECT_THRESHOLD:
