@@ -36,7 +36,7 @@ def calculate_tradeoffs(fixed_params):
 # --- VISUALIZATION HELPER FUNCTIONS (GAUGE IS UNCHANGED, PREVIEW IS NEW) ---
 # ======================================================================================
 def create_angular_gauge(value, title, unit, quality_ranges, higher_is_better=True):
-    # This function is already correct from our last change and remains unchanged
+    # This function is already correct and remains unchanged.
     if higher_is_better:
         green_range, yellow_range, red_range = [quality_ranges['average'], quality_ranges['max']], [quality_ranges['poor'], quality_ranges['average']], [0, quality_ranges['poor']]
     else:
@@ -52,7 +52,7 @@ def create_angular_gauge(value, title, unit, quality_ranges, higher_is_better=Tr
     fig.update_layout(height=250, margin=dict(l=30, r=30, t=50, b=30))
     return fig
 
-# --- THE NEW "INTERACTIVE ENGINEERING BLUEPRINT" FUNCTION ---
+# --- THE NEW AND FINAL "INTERACTIVE ENGINEERING BLUEPRINT" FUNCTION ---
 def create_geometry_preview(top_d, bottom_d, height, taper):
     """Creates a rich, annotated engineering diagram of the via cross-section with an 'ideal' ghost."""
     
@@ -195,4 +195,4 @@ def render():
         st.subheader("Via Quality (Taper)")
         st.markdown("This measures the **Taper Angle (θ)**. A lower angle is better. An angle **below 10° is excellent (Green Zone)**, while an angle **above 13° is a high risk (Red Zone)**.")
         st.subheader("Process Stability")
-        st.markdown("This measures the **Process Window** (`Top Diameter - Bottom Diameter`). A wider window is better, indicating a more 'forgiving' process. A good window is typically **at least 60%** of the target top diameter.")
+        st.markdown("This measures the **Process Window** (`Top Diameter - Bottom Diameter`). A wider window is better. A good window is typically **at least 60%** of the target top diameter.")
