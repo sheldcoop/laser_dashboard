@@ -155,12 +155,3 @@ def render():
     st.markdown("---")
     with st.expander("Understanding the Scorecard & Preview", expanded=False):
         # ... (The explanation section remains here) ...
-    with st.expander("Understanding the Scorecard & Preview", expanded=False):
-        st.subheader("The Live Geometry Preview")
-        st.markdown("This engineering blueprint shows a realistic cross-section of the via. The solid blue shape is the predicted via, while the dotted 'ghost' represents a perfect, straight-walled via. The goal is to make the blue shape match the ghost as closely as possible.")
-        st.subheader("Energy Efficiency")
-        st.markdown("Measures the **Fluence Ratio**. A lower number is more efficient. The optimal **Green Zone is 0-7x**.")
-        st.subheader("Via Quality (Taper)")
-        st.markdown("Measures the **Taper Angle (θ)**. A lower angle is better. An angle **below 10° is excellent (Green Zone)**, while an angle **above 13° is a high risk (Red Zone)**.")
-        st.subheader("Process Stability")
-        st.markdown("Measures the **Process Window** (`Top Diameter - Bottom Diameter`). A wider window is better. A good window is typically **at least 60%** of the resulting top diameter.")
