@@ -4,14 +4,13 @@ import plotly.graph_objects as go
 from utils import UM_TO_CM, UJ_TO_J
 
 # ======================================================================================
-# --- CALCULATION ENGINE (REMAINS UNCHANGED) ---
+# --- CALCULATION ENGINE (UNCHANGED) ---
 # ======================================================================================
 @st.cache_data
 def calculate_tradeoffs(fixed_params):
     p = dict(fixed_params)
     spot_diameters = np.linspace(p['min_spot'], p['max_spot'], 200)
-    w0s_um = spot_diameters / 2.0
-    w0s_cm = w0s_um * UM_TO_CM
+    w0s_um = spot_diameters / 2.0; w0s_cm = w0s_um * UM_TO_CM
     d_top_cm = p['target_diameter_um'] * UM_TO_CM
     
     required_peak_fluence = p['ablation_threshold'] * np.exp((d_top_cm**2) / (2 * w0s_cm**2))
@@ -34,49 +33,71 @@ def calculate_tradeoffs(fixed_params):
     }
 
 # ======================================================================================
-# --- GAUGE VISUALIZATION HELPER (WITH CORRECTED COLORS AND LOGIC) ---
+# --- VISUALIZATION HELPER FUNCTIONS (UNCHANGED GAUGE, NEW PREVIEW) ---
 # ======================================================================================
 def create_angular_gauge(value, title, unit, quality_ranges, higher_is_better=True):
-    """Creates a professional Plotly angular gauge with corrected, intuitive colors."""
-    
-    # Define ranges for Red, Yellow, Green based on whether higher or lower is better
+    # (This function is already perfect and remains unchanged)
     if higher_is_better:
-        # Green is high (e.g., Stability)
-        green_range = [quality_ranges['average'], quality_ranges['max']]
-        yellow_range = [quality_ranges['poor'], quality_ranges['average']]
-        red_range = [0, quality_ranges['poor']]
+        green_range, yellow_range, red_range = [quality_ranges['average'], quality_ranges['max']], [quality_ranges['poor'], quality_ranges['average']], [0, quality_ranges['poor']]
     else:
-        # Green is low (e.g., Taper, Energy)
-        green_range = [0, quality_ranges['good']]
-        yellow_range = [quality_ranges['good'], quality_ranges['average']]
-        red_range = [quality_ranges['average'], quality_ranges['max']]
-
+        green_range, yellow_range, red_range = [0, quality_ranges['good']], [quality_ranges['good'], quality_ranges['average']], [quality_ranges['average'], quality_ranges['max']]
     fig = go.Figure(go.Indicator(
-        mode = "gauge+number",
-        value = value,
-        domain = {'x': [0, 1], 'y': [0, 1]},
-        title = {'text': f"<b>{title}</b><br><span style='font-size:0.9em;color:gray'>{unit}</span>", 'font': {"size": 16}},
-        gauge = {
-            'axis': {'range': [0, quality_ranges['max']], 'tickwidth': 1, 'tickcolor': "darkblue"},
-            'bar': {'color': "#34495e", 'thickness': 0.3},
-            'bgcolor': "white",
-            'borderwidth': 2,
-            'bordercolor': "#ecf0f1",
-            'steps': [
-                {'range': green_range, 'color': '#2ecc71'},
-                {'range': yellow_range, 'color': '#f1c40f'},
-                {'range': red_range, 'color': '#e74c3c'}
-            ],
-            'threshold': {
-                'line': {'color': "black", 'width': 4},
-                'thickness': 0.85,
-                'value': value}
-        }))
+        mode="gauge+number", value=value,
+        domain={'x': [0, 1], 'y': [0, 1]},
+        title={'text': f"<b>{title}</b><br><span style='font-size:0.9em;color:gray'>{unit}</span>", 'font': {"size": 16}},
+        gauge={'axis': {'range': [0, quality_ranges['max']]},
+               'bar': {'color': "#34495e", 'thickness': 0.3},
+               'steps': [{'range': green_range, 'color': '#2ecc71'}, {'range': yellow_range, 'color': '#f1c40f'}, {'range': red_range, 'color': '#e74c3c'}],
+               'threshold': {'line': {'color': "black", 'width': 4}, 'thickness': 0.85, 'value': value}}))
     fig.update_layout(height=250, margin=dict(l=30, r=30, t=50, b=30))
     return fig
 
+# --- NEW: FUNCTION TO CREATE THE LIVE GEOMETRY PREVIEW ---
+def create_geometry_preview(top_d, bottom_d, height, taper):
+    """Creates a clean, annotated engineering diagram of the via cross-section."""
+    
+    # Define the coordinates for the material block and the via trapezoid
+    max_width = top_d * 1.5
+    material_x = [-max_width/2, max_width/2, max_width/2, -max_width/2, -max_width/2]
+    material_y = [0, 0, -height, -height, 0]
+    
+    via_x = [-top_d/2, top_d/2, bottom_d/2, -bottom_d/2, -top_d/2]
+    via_y = [0, 0, -height, -height, 0]
+
+    fig = go.Figure()
+
+    # Draw the material block
+    fig.add_trace(go.Scatter(x=material_x, y=material_y, fill="toself", fillcolor='rgba(236, 240, 241, 0.7)',
+                             line=dict(color='rgba(189, 195, 199, 0.5)'), mode='lines'))
+    # Draw the via cutout (by filling with white)
+    fig.add_trace(go.Scatter(x=via_x, y=via_y, fill="toself", fillcolor='white',
+                             line=dict(color='#3498db', width=3), mode='lines'))
+
+    # --- Add Dynamic Annotations ---
+    # Top Diameter
+    fig.add_shape(type="line", x0=-top_d/2, y0=height*0.15, x1=top_d/2, y1=height*0.15, line=dict(color="black", width=1))
+    fig.add_annotation(x=0, y=height*0.2, text=f"Top: {top_d:.2f} µm", showarrow=False, yanchor="bottom")
+
+    # Bottom Diameter
+    if bottom_d > 0:
+        fig.add_shape(type="line", x0=-bottom_d/2, y0=-height*1.15, x1=bottom_d/2, y1=-height*1.15, line=dict(color="black", width=1))
+        fig.add_annotation(x=0, y=-height*1.2, text=f"Bottom: {bottom_d:.2f} µm", showarrow=False, yanchor="top")
+
+    # Taper Angle
+    fig.add_annotation(x=top_d/2, y=-height/2, text=f"Taper: {taper:.1f}°", showarrow=True, ax=50, ay=0, xanchor="left")
+    
+    # Clean up the layout to look like a diagram, not a plot
+    fig.update_layout(
+        showlegend=False,
+        xaxis=dict(visible=False, range=[-max_width/2 * 1.1, max_width/2 * 1.1]),
+        yaxis=dict(visible=False, range=[-height*1.5, height*0.5], scaleanchor="x", scaleratio=1),
+        margin=dict(l=10, r=10, t=10, b=10),
+        height=300
+    )
+    return fig
+
 # ======================================================================================
-# --- MAIN RENDER FUNCTION ---
+# --- MAIN RENDER FUNCTION (WITH THE NEW PREVIEW ADDED) ---
 # ======================================================================================
 def render():
     st.header("Spot Size Sensitivity Analyzer")
@@ -86,7 +107,7 @@ def render():
     col_inputs, col_outputs = st.columns([2, 3], gap="large")
 
     with col_inputs:
-        # --- CONTROL PANEL ---
+        # (Control Panel is unchanged)
         st.subheader("1. Define Your Fixed Goal")
         with st.container(border=True):
             target_diameter_um = st.number_input("Target Top Diameter (µm)", 1.0, 100.0, 50.0, 0.5)
@@ -102,22 +123,28 @@ def render():
             selected_spot = st.slider("Select a Beam Spot Diameter to analyze (µm)", min_value=min_spot, max_value=max_spot, value=default_spot)
 
     with col_outputs:
-        # --- CALCULATIONS ---
+        # (Calculations are unchanged)
         fixed_params = {"target_diameter_um": target_diameter_um, "material_thickness": material_thickness, "ablation_threshold": ablation_threshold, "penetration_depth": penetration_depth, "min_spot": min_spot, "max_spot": max_spot, "overkill_shots": 10}
         tradeoff_data = calculate_tradeoffs(frozenset(fixed_params.items()))
         idx = np.argmin(np.abs(tradeoff_data["spot_diameters"] - selected_spot))
-        
         live_fluence_ratio = tradeoff_data["fluence_ratios"][idx]
         live_taper = tradeoff_data["taper_angles"][idx]
         live_window = tradeoff_data["process_windows"][idx]
 
+        # --- NEW: RENDER THE LIVE GEOMETRY PREVIEW FIRST ---
+        st.subheader("Live Geometry Preview")
+        live_bottom_d = target_diameter_um - live_window
+        st.plotly_chart(
+            create_geometry_preview(target_diameter_um, live_bottom_d, material_thickness, live_taper),
+            use_container_width=True
+        )
+        st.markdown("---")
+
+        # (The Engineer's Scorecard section is unchanged)
         st.subheader("The Engineer's Scorecard")
-        
-        # --- IMPLEMENTING YOUR EXACT RANGES ---
         energy_ranges = {'good': 7, 'average': 10, 'max': 20}
         taper_ranges = {'good': 10, 'average': 13, 'max': 20}
         window_ranges = {'poor': target_diameter_um * 0.3, 'average': target_diameter_um * 0.6, 'max': target_diameter_um}
-        
         g1, g2, g3 = st.columns(3)
         with g1:
             st.plotly_chart(create_angular_gauge(live_fluence_ratio, "Energy Efficiency", "x Threshold", energy_ranges, higher_is_better=False), use_container_width=True)
@@ -125,6 +152,9 @@ def render():
             st.plotly_chart(create_angular_gauge(live_taper, "Via Quality (Taper)", "°", taper_ranges, higher_is_better=False), use_container_width=True)
         with g3:
             st.plotly_chart(create_angular_gauge(live_window, "Process Stability", "µm", window_ranges, higher_is_better=True), use_container_width=True)
+
+      
+   
 
         # --- THE SMARTER "FINAL VERDICT" LOGIC ---
         st.markdown("---")
