@@ -37,10 +37,9 @@ def calculate_tradeoffs(fixed_params):
     }
 
 # ======================================================================================
-# --- VISUALIZATION HELPER FUNCTIONS ---
+# --- VISUALIZATION HELPER FUNCTIONS (UNCHANGED) ---
 # ======================================================================================
 def create_angular_gauge(value, title, unit, quality_ranges, higher_is_better=True):
-    # This function is correct and remains unchanged.
     if higher_is_better:
         green_range, yellow_range, red_range = [quality_ranges['average'], quality_ranges['max']], [quality_ranges['poor'], quality_ranges['average']], [0, quality_ranges['poor']]
     else:
@@ -53,47 +52,26 @@ def create_angular_gauge(value, title, unit, quality_ranges, higher_is_better=Tr
     fig.update_layout(height=250, margin=dict(l=30, r=30, t=50, b=30))
     return fig
 
-# --- THE NEW, DEFINITIVE "PHOTOREALISTIC MICROGRAPH" FUNCTION ---
 def create_geometry_preview(top_d, bottom_d, height, taper):
-    """Creates the rich, photorealistic, annotated 'Interactive Engineering Blueprint'."""
-    
     if not all(np.isfinite([top_d, bottom_d, height, taper])) or top_d <= 0 or height <= 0:
         return go.Figure().update_layout(height=350, annotations=[dict(text="Please select a valid process", showarrow=False)])
-
     max_width = top_d * 1.6
-    copper_thickness = height * 0.05 # Copper is 5% of total thickness
-    
+    copper_thickness = height * 0.05
     fig = go.Figure()
-
-    # 1. Draw the ABF Dielectric (dark, solid block)
-    fig.add_shape(type="rect", x0=-max_width/2, y0=0, x1=max_width/2, y1=-height,
-                  fillcolor='rgba(44, 62, 80, 0.9)', line_width=0, layer="below")
-    
-    # 2. Draw the Copper Layers (top and bottom)
+    fig.add_shape(type="rect", x0=-max_width/2, y0=0, x1=max_width/2, y1=-height, fillcolor='rgba(44, 62, 80, 0.9)', line_width=0, layer="below")
     fig.add_shape(type="rect", x0=-max_width/2, y0=copper_thickness, x1=max_width/2, y1=0, fillcolor='#b87333', line_width=0, layer="below")
     fig.add_shape(type="rect", x0=-max_width/2, y0=-height, x1=max_width/2, y1=-height-copper_thickness, fillcolor='#b87333', line_width=0, layer="below")
-
-    # 3. Draw the "Ideal Via" Ghost (the "Targeting Laser")
-    fig.add_shape(type="rect", x0=-top_d/2, y0=copper_thickness, x1=top_d/2, y1=-height-copper_thickness,
-                  line=dict(color="rgba(231, 76, 60, 0.5)", width=2, dash="dot"), layer="below",
-                  fillcolor="rgba(231, 76, 60, 0.05)")
-
-    # 4. Draw the actual via cutout with a subtle inner shadow
+    fig.add_shape(type="rect", x0=-top_d/2, y0=copper_thickness, x1=top_d/2, y1=-height-copper_thickness, line=dict(color="rgba(231, 76, 60, 0.5)", width=2, dash="dot"), layer="below", fillcolor="rgba(231, 76, 60, 0.05)")
     via_x = [-top_d/2, top_d/2, bottom_d/2, -bottom_d/2]
     via_y = [0, 0, -height, -height]
-    fig.add_trace(go.Scatter(x=via_x, y=via_y, fill="toself", fillcolor='white',
-                             line=dict(color='#3498db', width=3), mode='lines'))
-    
-    # --- Add Rich, CAD-Style Annotations ---
+    fig.add_trace(go.Scatter(x=via_x, y=via_y, fill="toself", fillcolor='white', line=dict(color='#3498db', width=3), mode='lines'))
     fig.add_shape(type="line", x0=-top_d/2, y0=copper_thickness*2, x1=top_d/2, y1=copper_thickness*2, line=dict(color="black", width=1))
     fig.add_annotation(x=0, y=copper_thickness*2.5, text=f"Top: {top_d:.2f} µm", showarrow=False, yanchor="bottom")
     if bottom_d > 0.1:
         fig.add_shape(type="line", x0=-bottom_d/2, y0=-height-copper_thickness*2, x1=bottom_d/2, y1=-height-copper_thickness*2, line=dict(color="black", width=1))
         fig.add_annotation(x=0, y=-height-copper_thickness*2.5, text=f"Bottom: {bottom_d:.2f} µm", showarrow=False, yanchor="top")
     fig.add_annotation(x=top_d/2 * 1.1, y=-height/2, text=f"Taper: {taper:.1f}°", showarrow=True, arrowhead=2, ax=40, ay=0, xanchor="left")
-    
-    fig.update_layout(showlegend=False, xaxis=dict(visible=False), yaxis=dict(visible=False, scaleanchor="x", scaleratio=1),
-                      margin=dict(l=20, r=20, t=20, b=20), height=350, paper_bgcolor='rgba(0,0,0,0)')
+    fig.update_layout(showlegend=False, xaxis=dict(visible=False), yaxis=dict(visible=False, scaleanchor="x", scaleratio=1), margin=dict(l=20, r=20, t=20, b=20), height=350, paper_bgcolor='rgba(0,0,0,0)')
     return fig
 
 # ======================================================================================
@@ -107,7 +85,6 @@ def render():
     col_inputs, col_outputs = st.columns([2, 3], gap="large")
 
     with col_inputs:
-        # --- CONTROL PANEL ---
         st.subheader("1. Define Your Fixed Recipe")
         with st.container(border=True):
             pulse_energy_uJ = st.number_input("Fixed Pulse Energy (µJ)", 1.0, 100.0, 18.0, 0.5)
@@ -120,7 +97,6 @@ def render():
             selected_spot = st.slider("Select a Beam Spot Diameter to analyze (µm)", min_value=10.0, max_value=80.0, value=17.82)
 
     with col_outputs:
-        # --- CALCULATIONS ---
         fixed_params = {"pulse_energy_uJ": pulse_energy_uJ, "material_thickness": material_thickness, "ablation_threshold": ablation_threshold, "penetration_depth": penetration_depth, "min_spot": 10.0, "max_spot": 80.0, "overkill_shots": 10}
         tradeoff_data = calculate_tradeoffs(frozenset(fixed_params.items()))
         idx = np.argmin(np.abs(tradeoff_data["spot_diameters"] - selected_spot))
@@ -133,25 +109,51 @@ def render():
 
         st.subheader("Live Geometry Preview")
         st.plotly_chart(create_geometry_preview(live_top_d, live_bottom_d, material_thickness, live_taper), use_container_width=True)
-        st.markdown("---")
-
+        
+        st.markdown("---") # This was missing its indentation
         st.subheader("The Engineer's Scorecard")
-        # --- THE CORRECTED GAUGE RANGES ---
+        
         energy_ranges = {'good': 10, 'average': 50, 'max': 100} 
         taper_ranges = {'good': 8, 'average': 12, 'max': 20}
-        window_ranges = {'poor': 4, 'average': 8, 'max': max(15, live_top_d)} # Max range is dynamic
+        window_ranges = {'poor': 4, 'average': 8, 'max': max(15, live_top_d if live_top_d > 0 else 15)}
         
         g1, g2, g3 = st.columns(3)
         with g1: st.plotly_chart(create_angular_gauge(live_fluence_ratio, "Energy Efficiency", "x Threshold", energy_ranges, higher_is_better=False), use_container_width=True)
         with g2: st.plotly_chart(create_angular_gauge(live_taper, "Via Quality (Taper)", "°", taper_ranges, higher_is_better=False), use_container_width=True)
         with g3: st.plotly_chart(create_angular_gauge(live_window, "Process Stability", "µm", window_ranges, higher_is_better=True), use_container_width=True)
 
-        # --- THE SMARTER "FINAL VERDICT" LOGIC ---
         st.markdown("---")
         st.subheader("Final Verdict")
+        
+        # --- THIS IS THE CORRECTED, INDENTED BLOCK ---
         with st.container(border=True):
-            # ... (The smart narrator logic remains here) ...
+            TAPER_REJECT_THRESHOLD = taper_ranges['average']
+            TAPER_IDEAL_THRESHOLD = taper_ranges['good']
+            INEFFICIENT_FLUENCE_RATIO = energy_ranges['average']
+
+            if live_top_d < 5:
+                 st.error("❌ **REJECT (No Effective Process)**", icon="🚨")
+                 st.markdown("The fluence is too low at this spot size to create a meaningful via. The process is not viable. You must **increase the Pulse Energy** or **decrease the Beam Spot Diameter**.")
+            elif live_taper > TAPER_REJECT_THRESHOLD:
+                st.error("❌ **REJECT (Poor Quality)**", icon="🚨")
+                st.markdown(f"The resulting **taper angle of {live_taper:.1f}° is too high**. This process creates a 'V-shaped' via that is unsuitable for reliable manufacturing. The primary cause is a **Beam Spot Diameter that is too small** for the desired via size.")
+            elif live_taper <= TAPER_IDEAL_THRESHOLD and live_fluence_ratio <= INEFFICIENT_FLUENCE_RATIO:
+                st.success("✅ **IDEAL PROCESS (Balanced)**", icon="👍")
+                st.markdown(f"You have found the **'sweet spot'**. This recipe produces a high-quality via with a **taper of {live_taper:.1f}°**. The energy usage is efficient, and the process is highly stable.")
+            elif live_taper <= TAPER_IDEAL_THRESHOLD and live_fluence_ratio > INEFFICIENT_FLUENCE_RATIO:
+                st.info("💡 **STABLE BUT INEFFICIENT**", icon="💰")
+                st.markdown(f"This recipe produces a **high-quality via (Taper: {live_taper:.1f}°)**, but the energy cost is excessive. The **Beam Spot Diameter is much larger than necessary**, wasting energy.")
+            else:
+                 st.info("💡 **GOOD COMPROMISE**", icon="👌")
+                 st.markdown("This is a **robust and reliable** recipe. It achieves acceptable via quality with good efficiency and stability. A solid choice for production.")
 
     st.markdown("---")
     with st.expander("Understanding the Scorecard & Preview", expanded=False):
-        # ... (The explanation section remains here) ...
+        st.subheader("The Live Geometry Preview")
+        st.markdown("This engineering blueprint shows a realistic cross-section of the via. The solid blue shape is the predicted via, while the dotted 'ghost' represents a perfect, straight-walled via. The goal is to make the blue shape match the ghost as closely as possible.")
+        st.subheader("Energy Efficiency")
+        st.markdown("Measures the **Fluence Ratio**. A lower number is more efficient. The optimal **Green Zone is 0-10x**.")
+        st.subheader("Via Quality (Taper)")
+        st.markdown("Measures the **Taper Angle (θ)**. A lower angle is better. An angle **below 8° is excellent (Green Zone)**, while an angle **above 12° is a high risk (Red Zone)**.")
+        st.subheader("Process Stability")
+        st.markdown("Measures the **Process Window** (`Top Diameter - Bottom Diameter`). A wider window is better. A good window is **at least 8 µm (Green Zone)**, while a window below 4 µm is considered unstable (Red Zone).")
