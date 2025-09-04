@@ -8,3 +8,5 @@ backgroundColor="#f6f6f7"
 secondaryBackgroundColor="#ffffff"
 textColor="#0d0d0d" 
 font="sans serif"
+[server]
+fileWatcherType = "none"
